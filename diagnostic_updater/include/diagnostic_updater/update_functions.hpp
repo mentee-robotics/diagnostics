@@ -177,7 +177,7 @@ class FrequencyStatus : public DiagnosticTask {
 
     virtual void run(diagnostic_updater::DiagnosticStatusWrapper& stat) {
         if (stopped_) {
-            stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "Stopped Publishing");
+            stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "Not Publishing");
             return;
         }
         std::unique_lock<std::mutex> lock(lock_);

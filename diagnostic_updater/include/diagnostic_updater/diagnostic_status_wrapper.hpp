@@ -109,9 +109,11 @@ class DiagnosticStatusWrapper : public diagnostic_msgs::msg::DiagnosticStatus {
      */
 
     void mergeSummary(unsigned char lvl, const std::string s) {
-        if (!message.empty()) {
+        if (!message.empty() && !s.empty()) {
             message += "; ";
             message += s;
+        } else if (!s.empty()) {
+            message = s;
         }
         if (lvl > level) {
             level = lvl;
