@@ -36,6 +36,7 @@
 #define DIAGNOSTIC_UPDATER__DIAGNOSTIC_UPDATER_HPP_
 
 #include <functional>  // for bind()
+#include <json/json.hpp>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -45,6 +46,7 @@
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "diagnostic_msgs/msg/diagnostic_status.hpp"
 #include "diagnostic_updater/diagnostic_status_wrapper.hpp"
+#include "logger/logger.hpp"
 #include "rcl/time.h"
 #include "rclcpp/create_timer.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -324,6 +326,9 @@ class DiagnosticTaskVector {
 class Updater : public DiagnosticTaskVector {
    public:
     bool verbose_;
+    std::shared_ptr<Logger> custom_logger_;
+    int custom_logger_decimation_;
+    int current_custom_logger_decimation_;
 
     /**
      * \brief Constructs an updater class.
@@ -334,10 +339,13 @@ class Updater : public DiagnosticTaskVector {
      * ros2 parameter was set previously.
      */
     template <class NodeT>
-    explicit Updater(NodeT node, double period = 1.0)
+    explicit Updater(NodeT node, double period = 1.0,
+                     std::shared_ptr<Logger> custom_logger = nullptr,
+                     double custom_logger_period = 1.0)
         : Updater(node->get_node_base_interface(), node->get_node_clock_interface(),
                   node->get_node_logging_interface(), node->get_node_parameters_interface(),
-                  node->get_node_timers_interface(), node->get_node_topics_interface(), period) {}
+                  node->get_node_timers_interface(), node->get_node_topics_interface(), period,
+                  custom_logger, custom_logger_period) {}
 
     Updater(std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> base_interface,
             std::shared_ptr<rclcpp::node_interfaces::NodeClockInterface> clock_interface,
@@ -345,8 +353,10 @@ class Updater : public DiagnosticTaskVector {
             std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> parameters_interface,
             std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface> timers_interface,
             std::shared_ptr<rclcpp::node_interfaces::NodeTopicsInterface> topics_interface,
-            double period = 1.0)
+            double period = 1.0, std::shared_ptr<Logger> custom_logger = nullptr,
+            double custom_logger_period = 1.0)
         : verbose_(false),
+          custom_logger_(custom_logger),
           base_interface_(base_interface),
           timers_interface_(timers_interface),
           clock_(clock_interface->get_clock()),
@@ -367,6 +377,8 @@ class Updater : public DiagnosticTaskVector {
         }
         period = period_param.get<double>();
         period_ = rclcpp::Duration::from_seconds(period);
+        custom_logger_decimation_ = static_cast<int>(custom_logger_period / period);
+        current_custom_logger_decimation_ = 0;
 
         reset_timer();
 
@@ -501,7 +513,32 @@ class Updater : public DiagnosticTaskVector {
             }
 
             publish(status_vec);
+            if (custom_logger_ && current_custom_logger_decimation_ == 0) {
+                custom_log(status_vec);
+                current_custom_logger_decimation_ =
+                    (current_custom_logger_decimation_ + 1) % custom_logger_decimation_;
+            }
         }
+    }
+
+    void custom_log(const std::vector<diagnostic_msgs::msg::DiagnosticStatus> &status_vec) {
+        Json::Value tasks;
+        for (const auto &status : status_vec) {
+            Json::Value task;
+            task["name"] = status.name;
+            task["level"] = status.level;
+            task["message"] = status.message;
+            task["hardware_id"] = status.hardware_id;
+            Json::Value values;
+            for (const auto &value : status.values) {
+                values[value.key] = value.value;
+            }
+            task["values"] = values;
+            tasks.append(task);
+        }
+        Json::Value custom_log;
+        custom_log["diagnostics"] = tasks;
+        custom_logger_->info(custom_log);
     }
 
     /**

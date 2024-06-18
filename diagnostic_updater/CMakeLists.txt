@@ -16,19 +16,25 @@ find_package(diagnostic_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(logger REQUIRED)
+find_package(json REQUIRED)
 
 add_library(${PROJECT_NAME} INTERFACE)
-target_include_directories(
-  ${PROJECT_NAME}
-  INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
-)
+
 ament_target_dependencies(
   ${PROJECT_NAME}
   INTERFACE
   diagnostic_msgs
   rclcpp
+  logger
+  json
+)
+
+target_include_directories(
+  ${PROJECT_NAME}
+  INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
 )
 
 install(
@@ -41,11 +47,14 @@ install(
 )
 
 add_executable(example src/example.cpp)
+
 ament_target_dependencies(
   example
-  "diagnostic_msgs"
-  "rclcpp"
-  "std_msgs"
+  diagnostic_msgs
+  rclcpp
+  std_msgs
+  logger
+  json
 )
 target_link_libraries(example ${PROJECT_NAME})
 
@@ -57,6 +66,8 @@ if(BUILD_TESTING)
 
   find_package(ament_cmake_gtest REQUIRED)
   find_package(rclcpp_lifecycle REQUIRED)
+  find_package(logger REQUIRED)
+  find_package(json REQUIRED)
   ament_add_gtest(diagnostic_updater_test test/diagnostic_updater_test.cpp)
   target_include_directories(diagnostic_updater_test
     PUBLIC
@@ -65,10 +76,12 @@ if(BUILD_TESTING)
   )
   ament_target_dependencies(
     diagnostic_updater_test
-    "diagnostic_msgs"
-    "rclcpp"
-    "rclcpp_lifecycle"
-    "std_msgs"
+    diagnostic_msgs
+    rclcpp
+    rclcpp_lifecycle
+    std_msgs
+    logger
+    json
   )
 
   ament_add_gtest(diagnostic_status_wrapper_test test/diagnostic_status_wrapper_test.cpp)
@@ -79,10 +92,12 @@ if(BUILD_TESTING)
   )
   ament_target_dependencies(
     diagnostic_status_wrapper_test
-    "diagnostic_msgs"
-    "rclcpp"
-    "rclcpp_lifecycle"
-    "std_msgs"
+    diagnostic_msgs
+    rclcpp
+    rclcpp_lifecycle
+    std_msgs
+    logger
+    json
   )
   ament_add_gtest(status_msg_test test/status_msg_test.cpp)
   target_include_directories(status_msg_test
@@ -92,8 +107,10 @@ if(BUILD_TESTING)
   )
   ament_target_dependencies(
     status_msg_test
-    "diagnostic_msgs"
-    "rclcpp"
+    diagnostic_msgs
+    rclcpp
+    logger
+    json
   )
 
   find_package(ament_cmake_pytest REQUIRED)
@@ -127,5 +144,7 @@ ament_export_dependencies(diagnostic_msgs)
 ament_export_dependencies(rclcpp)
 ament_export_dependencies(rclpy)
 ament_export_dependencies(std_msgs)
+ament_export_dependencies(logger)
+ament_export_dependencies(json)
 
 ament_package()
