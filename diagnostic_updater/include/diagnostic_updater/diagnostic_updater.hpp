@@ -515,9 +515,9 @@ class Updater : public DiagnosticTaskVector {
             publish(status_vec);
             if (custom_logger_ && current_custom_logger_decimation_ == 0) {
                 custom_log(status_vec);
-                current_custom_logger_decimation_ =
-                    (current_custom_logger_decimation_ + 1) % custom_logger_decimation_;
             }
+            current_custom_logger_decimation_ =
+                    (current_custom_logger_decimation_ + 1) % custom_logger_decimation_;
         }
     }
 
