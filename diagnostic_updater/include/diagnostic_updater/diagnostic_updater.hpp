@@ -529,11 +529,13 @@ class Updater : public DiagnosticTaskVector {
             task["level"] = status.level;
             task["message"] = status.message;
             task["hardware_id"] = status.hardware_id;
-            Json::Value values;
+            Json::Value values = {};
             for (const auto &value : status.values) {
                 values[value.key] = value.value;
             }
-            task["values"] = values;
+            if (!values.empty()) {
+                task["values"] = values;
+            }
             tasks.append(task);
         }
         Json::Value custom_log;
