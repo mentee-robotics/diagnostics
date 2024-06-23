@@ -100,7 +100,7 @@ public:
     std::string name, diagnostic_updater::Updater & diag,
     const diagnostic_updater::FrequencyStatusParam & freq,
     const rclcpp::Clock::SharedPtr & clock = std::make_shared<rclcpp::Clock>())
-  : CompositeDiagnosticTask(name + " topic status"), freq_(freq, clock)
+  : CompositeDiagnosticTask(name + " topic status"), freq_(freq, clock, false)
   {
     addTask(&freq_);
     diag.add(*this);
@@ -279,6 +279,92 @@ public:
 private:
   typename PublisherT::SharedPtr publisher_;
 };
+
+/**
+ * \brief A TopicDiagnostic combined with a ros::Publisher.
+ *
+ * For a standard ros::Publisher, this class allows the ros::Publisher and
+ * the TopicDiagnostic to be combined for added convenience.
+ */
+
+template<typename MessageT, typename AllocatorT = std::allocator<void>>
+class HeaderlessDiagnosedPublisher : public HeaderlessTopicDiagnostic
+{
+public:
+  /**
+   * \brief Constructs a DiagnosedPublisher.
+   *
+   * \param pub The publisher on which statistics are being collected.
+   *
+   * \param diag The diagnostic_updater that the CompositeDiagnosticTask
+   * should add itself to.
+   *
+   * \param freq The parameters for the FrequencyStatus class that will be
+   * computing statistics.
+   *
+   * \param stamp The parameters for the TimeStampStatus class that will be
+   * computing statistics.
+   */
+
+  using PublisherT = rclcpp::Publisher<MessageT, AllocatorT>;
+
+  HeaderlessDiagnosedPublisher(
+    const typename PublisherT::SharedPtr & pub,
+    diagnostic_updater::Updater & diag,
+    const diagnostic_updater::FrequencyStatusParam & freq,
+    const rclcpp::Clock::SharedPtr & clock = std::make_shared<rclcpp::Clock>())
+  : HeaderlessTopicDiagnostic(pub->get_topic_name(), diag, freq, clock),
+    publisher_(pub) {}
+
+  virtual ~HeaderlessDiagnosedPublisher() {}
+
+  /**
+   * \brief Collects statistics and publishes the message.
+   *
+   * The timestamp to be used by the TimeStampStatus class will be
+   * extracted from message.header.stamp.
+   */
+  virtual void publish(typename PublisherT::MessageUniquePtr message)
+  {
+    tick();
+    publisher_->publish(std::move(message));
+  }
+
+  /**
+   * \brief Collects statistics and publishes the message.
+   *
+   * The timestamp to be used by the TimeStampStatus class will be
+   * extracted from message.header.stamp.
+   */
+  virtual void publish(const MessageT & message)
+  {
+    tick();
+    publisher_->publish(message);
+  }
+
+  /**
+   * \brief Returns the publisher.
+   */
+  typename PublisherT::SharedPtr
+  getPublisher() const
+  {
+    return publisher_;
+  }
+
+  /**
+   * \brief Changes the publisher.
+   */
+  void setPublisher(typename PublisherT::SharedPtr pub)
+  {
+    publisher_ = pub;
+  }
+
+private:
+  typename PublisherT::SharedPtr publisher_;
+};
+
+
+
 }   // namespace diagnostic_updater
 
 #endif  // DIAGNOSTIC_UPDATER__PUBLISHER_HPP_
